@@ -1,0 +1,74 @@
+# version: '3.8'  # UN-COMMENT IF NEEDED BUT ITS OBSELETE TO USE `VERSION`
+
+#Include services for:
+#     db (MySQL database)  [1]
+#     api (PHP Laravel API) [2]
+#     client (Nuxt.js Client) [3]
+#     nginx (Nginx web server acting as a proxy) [4]
+services:
+  db: # [1]
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bookapi
+      MYSQL_USER: app
+      MYSQL_PASSWORD: password
+    volumes:
+      - ./db_data:/var/lib/mysql
+    networks:
+      - app-network
+    ports:
+      - "3306:3306"
+
+  api: # [2]
+    build:
+      context: ./api
+    container_name: api
+    volumes:
+      - ./api:/var/www/html
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: bookapi
+      DB_USERNAME: app
+      DB_PASSWORD: password
+    networks:
+      - app-network
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+
+  client: # [3]
+    build:
+      context: ./client
+    container_name: client
+    volumes:
+      - ./client:/usr/src/app
+    networks:
+      - app-network
+    ports:
+      - "3000:3000"
+
+  nginx: # [4]
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/default.conf
+      - ./certs:/etc/nginx/certs
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+      - client
+    networks:
+      - app-network
+
+volumes:
+  db_data:
+
+networks:
+  app-network:
+    driver: bridge
